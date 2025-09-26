@@ -127,6 +127,10 @@ public class Steam {
 
     public synchronized Jugador addJugador(String username, String password, String nombre, long fechaNacimiento, String fotoPath, String rol, boolean activo) throws IOException {
         Jugador jugador = new Jugador();
+        if (existeUsername(username)) {
+            throw new java.io.IOException("El username ya existe.");
+        }
+
         jugador.code = playerCode();
         jugador.username = username;
         jugador.password = password;
@@ -259,10 +263,10 @@ public class Steam {
         while (juegostm.getFilePointer() < juegostm.length()) {
             long pos = juegostm.getFilePointer();
             int code = juegostm.readInt();
-            juegostm.readUTF();               
-            juegostm.readUTF();               
-            juegostm.readChar();             
-            juegostm.readInt();               
+            juegostm.readUTF();               // titulo
+            juegostm.readUTF();               // genero
+            juegostm.readChar();              // sistema operativo
+            juegostm.readInt();               // edad minima
             long posPrecio = juegostm.getFilePointer();
             double price = juegostm.readDouble();
             if (code == codeJuego) {
@@ -270,8 +274,8 @@ public class Steam {
                 juegostm.writeDouble(nuevoPrecio);
                 return true;
             }
-            juegostm.readInt();               
-            juegostm.readUTF();               
+            juegostm.readInt();               // downloads
+            juegostm.readUTF();               // foto
         }
         return false;
     }
@@ -281,13 +285,13 @@ public class Steam {
         while (jugadorstm.getFilePointer() < jugadorstm.length()) {
             long pos = jugadorstm.getFilePointer();
             int code = jugadorstm.readInt();
-            jugadorstm.readUTF(); 
-            jugadorstm.readUTF();
-            jugadorstm.readUTF(); 
-            jugadorstm.readLong(); 
-            jugadorstm.readInt(); 
-            jugadorstm.readUTF(); 
-            jugadorstm.readUTF(); 
+            jugadorstm.readUTF(); // user
+            jugadorstm.readUTF(); // pass
+            jugadorstm.readUTF(); // nombre
+            jugadorstm.readLong(); // nac
+            jugadorstm.readInt(); // downloads
+            jugadorstm.readUTF(); // foto
+            jugadorstm.readUTF(); // rol
             long posEstado = jugadorstm.getFilePointer();
             boolean cur = jugadorstm.readBoolean();
             if (code == codeJugador) {
@@ -306,6 +310,9 @@ public class Steam {
             return false;
         }
         if (!jugador.estado) {
+            return false;
+        }
+        if (jugadorYaDescargo(jugadorCode, juegoCode)) {
             return false;
         }
         if (Character.toUpperCase(sistemaOperativo) != Character.toUpperCase(juego.sistemaOp)) {
@@ -334,16 +341,17 @@ public class Steam {
             out.writeLong(fechaHoy);
         }
 
-        
+        // Actualizar contadores en jugador y juego 
+        // Juego:
         juegostm.seek(0);
         while (juegostm.getFilePointer() < juegostm.length()) {
             long pos = juegostm.getFilePointer();
             int code = juegostm.readInt();
-            juegostm.readUTF(); 
-            juegostm.readUTF(); 
-            juegostm.readChar(); 
-            juegostm.readInt(); 
-            juegostm.readDouble(); 
+            juegostm.readUTF(); // titulo
+            juegostm.readUTF(); // genero
+            juegostm.readChar(); // sistema operativo
+            juegostm.readInt(); // edad
+            juegostm.readDouble(); // precio
             long posDownload = juegostm.getFilePointer();
             int download = juegostm.readInt();
             if (code == juego.code) {
@@ -352,22 +360,22 @@ public class Steam {
                 juegostm.readUTF();
                 break;
             }
-            juegostm.readUTF(); 
+            juegostm.readUTF(); // foto
         }
 
-        
+        // jugador:
         jugadorstm.seek(0);
         while (jugadorstm.getFilePointer() < jugadorstm.length()) {
             int code = jugadorstm.readInt();
-            jugadorstm.readUTF(); 
-            jugadorstm.readUTF(); 
-            jugadorstm.readUTF(); 
-            jugadorstm.readLong();
+            jugadorstm.readUTF(); // user
+            jugadorstm.readUTF(); // pass
+            jugadorstm.readUTF(); // nombre
+            jugadorstm.readLong(); // nac
             long posDownload = jugadorstm.getFilePointer();
             int download = jugadorstm.readInt();
-            jugadorstm.readUTF(); 
-            jugadorstm.readUTF(); 
-            jugadorstm.readBoolean(); 
+            jugadorstm.readUTF(); // foto
+            jugadorstm.readUTF(); // tipo
+            jugadorstm.readBoolean(); // estado
             if (code == jugador.code) {
                 jugadorstm.seek(posDownload);
                 jugadorstm.writeInt(download + 1);
@@ -384,6 +392,34 @@ public class Steam {
         }
 
         return true;
+    }
+
+    public synchronized boolean existeUsername(String username) throws java.io.IOException {
+        if (username == null) {
+            return false;
+        }
+        String target = username.trim();
+        if (target.isEmpty()) {
+            return false;
+        }
+
+        jugadorstm.seek(0);
+        while (jugadorstm.getFilePointer() < jugadorstm.length()) {
+            int c = jugadorstm.readInt();      // code
+            String u = jugadorstm.readUTF();   // username
+            jugadorstm.readUTF();              // password
+            jugadorstm.readUTF();              // nombre
+            jugadorstm.readLong();             // nacimiento
+            jugadorstm.readInt();              // contadorDownloads
+            jugadorstm.readUTF();              // fotoPath
+            jugadorstm.readUTF();              // tipoUsuario (ADMIN/NORMAL)
+            jugadorstm.readBoolean();          // estado
+
+            if (u.equalsIgnoreCase(target)) {
+                return true; // ya existe
+            }
+        }
+        return false; // no existe
     }
 
     public synchronized boolean reportJugador(int codeJugador, String txtFile) throws IOException {
@@ -429,7 +465,6 @@ public class Steam {
         }
         historial.sort(Comparator.comparingLong(a -> a.fecha));
 
-        // Escribir 
         try (PrintWriter pw = new PrintWriter(new OutputStreamWriter(new FileOutputStream(txtFile), "UTF-8"))) {
             int edad = Util.yearsSince(jugador.fechaNacimiento);
             pw.println("REPORTE CLIENTE: " + jugador.nombre + " (username: " + jugador.username + ")");
@@ -495,7 +530,7 @@ public class Steam {
         Collections.sort(list, new Comparator<DescargasSteam>() {
             @Override
             public int compare(DescargasSteam o1, DescargasSteam o2) {
-                return Long.compare(o2.fecha, o1.fecha); 
+                return Long.compare(o2.fecha, o1.fecha);
             }
         });
         return list;
@@ -504,4 +539,87 @@ public class Steam {
     public synchronized List<Juego> imprimirJuego() throws IOException {
         return listaJuegos();
     }
+
+    public synchronized java.util.List<clases.Jugador> listaJugadores() throws java.io.IOException {
+        java.util.ArrayList<clases.Jugador> list = new java.util.ArrayList<>();
+        jugadorstm.seek(0);
+        while (jugadorstm.getFilePointer() < jugadorstm.length()) {
+            int c = jugadorstm.readInt();
+            String u = jugadorstm.readUTF();
+            String p = jugadorstm.readUTF();
+            String n = jugadorstm.readUTF();
+            long nac = jugadorstm.readLong();
+            int dls = jugadorstm.readInt();
+            String foto = jugadorstm.readUTF();
+            String rol = jugadorstm.readUTF();
+            boolean est = jugadorstm.readBoolean();
+            clases.Jugador j = new clases.Jugador();
+            j.code = c;
+            j.username = u;
+            j.password = p;
+            j.nombre = n;
+            j.fechaNacimiento = nac;
+            j.contadorDownloads = dls;
+            j.fotoPath = foto;
+            j.rolUsuario = rol;
+            j.estado = est;
+            list.add(j);
+        }
+        return list;
+    }
+
+    public synchronized boolean actualizarNacimiento(int codeJugador, long nuevoMillis) throws java.io.IOException {
+        jugadorstm.seek(0);
+        while (jugadorstm.getFilePointer() < jugadorstm.length()) {
+            long start = jugadorstm.getFilePointer();
+            int code = jugadorstm.readInt();
+            jugadorstm.readUTF(); // user
+            jugadorstm.readUTF(); // pass
+            jugadorstm.readUTF(); // nombre
+            long posNacimiento = jugadorstm.getFilePointer();
+            long actual = jugadorstm.readLong();
+            jugadorstm.readInt(); // dls
+            jugadorstm.readUTF(); // foto
+            jugadorstm.readUTF(); // rol
+            jugadorstm.readBoolean(); // estado
+            if (code == codeJugador) {
+                jugadorstm.seek(posNacimiento);
+                jugadorstm.writeLong(nuevoMillis);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public synchronized boolean jugadorYaDescargo(int jugadorCode, int juegoCode) throws java.io.IOException {
+        java.io.File[] files = Util.Downloads.listFiles((dir, name) -> name.startsWith("download_") && name.endsWith(".stm"));
+        if (files == null) {
+            return false;
+        }
+        for (java.io.File f : files) {
+            try (java.io.DataInputStream in = new java.io.DataInputStream(new java.io.BufferedInputStream(new java.io.FileInputStream(f)))) {
+                int dCode = in.readInt();           // downloadId
+                int pCode = in.readInt();           // jugadorCode
+                in.readUTF();                       // jugadorNombre
+                int gCode = in.readInt();           // juegoCode
+                in.readUTF();                       // gameName
+                int imgLen = in.readInt();          // imagen
+                if (imgLen > 0) {
+                    in.skipBytes(imgLen);
+                }
+                in.readDouble();                    // price
+                in.readLong();                      // fecha
+                if (pCode == jugadorCode && gCode == juegoCode) {
+                    return true;
+                }
+            } catch (Exception ignore) {
+            }
+        }
+        return false;
+    }
+
+    public synchronized clases.Juego getJuegoPorCodigo(int code) throws java.io.IOException {
+        return buscarJuego(code);
+    }
+
 }

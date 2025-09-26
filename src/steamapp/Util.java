@@ -8,6 +8,7 @@ import java.text.SimpleDateFormat;
 import javax.imageio.ImageIO;
 
 public class Util {
+
     public static final File Cpadre = new File("steam");
     public static final File Downloads = new File(Cpadre, "downloads");
     public static final File Codigos = new File(Cpadre, "codes.stm");
@@ -15,10 +16,16 @@ public class Util {
     public static final File Players = new File(Cpadre, "player.stm");
     public static final SimpleDateFormat DTime = new SimpleDateFormat("dd/MM/yyyy HH:mm");
     public static final SimpleDateFormat DBirth = new SimpleDateFormat("yyyy-MM-dd");
-    
+    public static final File ROOT = Cpadre;
+    public static final File DOWNLOADS = Downloads;
+
     public static void ensureFolders() {
-        if (!Cpadre.exists()) Cpadre.mkdirs();
-        if (!Downloads.exists()) Downloads.mkdirs();
+        if (!Cpadre.exists()) {
+            Cpadre.mkdirs();
+        }
+        if (!Downloads.exists()) {
+            Downloads.mkdirs();
+        }
     }
 
     public static ImageIcon scaled(String path, int w, int h) {
@@ -36,16 +43,22 @@ public class Util {
         java.util.Calendar b = java.util.Calendar.getInstance();
         b.setTimeInMillis(birthMillis);
         int years = c.get(java.util.Calendar.YEAR) - b.get(java.util.Calendar.YEAR);
-        if (c.get(java.util.Calendar.DAY_OF_YEAR) < b.get(java.util.Calendar.DAY_OF_YEAR)) years--;
+        if (c.get(java.util.Calendar.DAY_OF_YEAR) < b.get(java.util.Calendar.DAY_OF_YEAR)) {
+            years--;
+        }
         return years;
     }
 
     public static String soToText(char so) {
         switch (Character.toUpperCase(so)) {
-            case 'W': return "Windows";
-            case 'M': return "Mac";
-            case 'L': return "Linux";
-            default: return "Desconocido";
+            case 'W':
+                return "Windows";
+            case 'M':
+                return "Mac";
+            case 'L':
+                return "Linux";
+            default:
+                return "Desconocido";
         }
     }
 
