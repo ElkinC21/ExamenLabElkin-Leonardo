@@ -15,7 +15,7 @@ public class Util {
     public static final File Players = new File(Cpadre, "player.stm");
     public static final SimpleDateFormat DTime = new SimpleDateFormat("dd/MM/yyyy HH:mm");
     public static final SimpleDateFormat DBirth = new SimpleDateFormat("yyyy-MM-dd");
-
+    
     public static void ensureFolders() {
         if (!Cpadre.exists()) Cpadre.mkdirs();
         if (!Downloads.exists()) Downloads.mkdirs();

@@ -8,6 +8,7 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.io.IOException;
 import java.util.Date;
+import steamapp.Steam;
 import steamapp.Util;
 
 public class Loginpantalla extends JFrame {
@@ -61,7 +62,7 @@ public class Loginpantalla extends JFrame {
         try {
             String u = userField.getText().trim();
             String p = new String(passField.getPassword());
-            Jugador pl = steam.login(u, p);
+            Jugador pl = steam.loginUsuario(u, p);
             if (pl == null) {
                 JOptionPane.showMessageDialog(this, "Usuario no encontrado", "Login", JOptionPane.WARNING_MESSAGE);
                 return;
@@ -70,7 +71,7 @@ public class Loginpantalla extends JFrame {
             if ("ADMIN".equalsIgnoreCase(pl.rolUsuario)) {
                 new Adminpantalla(steam, pl).setVisible(true);
             } else {
-                new UserFrame(steam, pl).setVisible(true);
+                new Userpantalla(steam, pl).setVisible(true);
             }
             dispose();
         } catch (IOException ex) {
@@ -94,7 +95,7 @@ public class Loginpantalla extends JFrame {
         ButtonGroup bg = new ButtonGroup(); bg.add(rbAdmin); bg.add(rbNormal);
         JCheckBox cbActivo = new JCheckBox("Activo", true);
         JTextField tfFoto = new JTextField();
-        JButton pick = new JButton("Elegir foto.");
+        JButton pick = new JButton("Elegir foto");
 
         panel.add(new JLabel("Username:"));    panel.add(tfUser);
         panel.add(new JLabel("Password:"));    panel.add(tfPass);
@@ -122,7 +123,7 @@ public class Loginpantalla extends JFrame {
             try {
                 java.util.Date date = (java.util.Date) spDate.getValue();
                 String tipo = rbAdmin.isSelected() ? "ADMIN" : "NORMAL";
-                steam.addPlayer(tfUser.getText().trim(), new String(tfPass.getPassword()),
+                steam.addJugador(tfUser.getText().trim(), new String(tfPass.getPassword()),
                         tfNombre.getText().trim(), date.getTime(), tfFoto.getText().trim(), tipo, cbActivo.isSelected());
                 JOptionPane.showMessageDialog(d, "Usuario creado");
                 d.dispose();
